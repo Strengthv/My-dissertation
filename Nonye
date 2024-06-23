@@ -1,0 +1,1014 @@
+# Load necessary libraries
+install.packages("caret")  # Install caret package if not already installed
+library(caret) # for train/test split
+library(glmnet)  # for logistic regression
+library(Metrics) # for evaluation metrics
+install.packages("ggplot2")
+library(ggplot2)
+install.packages("PRROC")
+library(PRROC)
+install.packages("ROCR")  # Install ROCR package if not already installed
+library(ROCR)  # for ROC curve
+install.packages("corrplot")  # Install corrplot package
+library(corrplot)  # Load corrplot package
+install.packages("plotROC")
+library(plotROC)
+
+# My dataset loading
+HR_Dataset <- read.csv("C:/Users/OEM/Desktop/Nonye/HR_Dataset.csv")
+
+# Convert categorical variables to factors
+HR_Dataset$Work_accident <- as.factor(HR_Dataset$Work_accident)
+HR_Dataset$left <- as.factor(HR_Dataset$left)
+HR_Dataset$promotion_last_5years <- as.factor(HR_Dataset$promotion_last_5years)
+HR_Dataset$Departments <- as.factor(HR_Dataset$Departments)
+HR_Dataset$salary <- as.factor(HR_Dataset$salary)
+
+
+
+# Convert categorical variables to factors
+HR_Dataset$Work_accident <- as.factor(HR_Dataset$Work_accident)
+HR_Dataset$left <- as.factor(HR_Dataset$left)
+HR_Dataset$promotion_last_5years <- as.factor(HR_Dataset$promotion_last_5years)
+HR_Dataset$Departments <- as.factor(HR_Dataset$Departments)
+HR_Dataset$salary <- as.factor(HR_Dataset$salary)
+
+# Print numerical levels of the first 12 rows
+head(as.data.frame(lapply(HR_Dataset[1:12, ], as.numeric)))
+
+
+# Convert categorical variables to numerical levels
+converted_categorical_variables <- data.frame(
+  Work_accident = as.numeric(HR_Dataset$Work_accident),
+  left = as.numeric(HR_Dataset$left),
+  promotion_last_5years = as.numeric(HR_Dataset$promotion_last_5years),
+  Departments = as.numeric(HR_Dataset$Departments),
+  salary = as.numeric(HR_Dataset$salary)
+)
+
+# Print the numerical levels of the converted categorical variables for the first 12 rows
+head(converted_categorical_variables, 12)
+
+
+# Print converted categorical variable table
+print("Converted Categorical Variables:")
+print("Work_accident:")
+print(table(HR_Dataset$Work_accident))
+print("left:")
+print(table(HR_Dataset$left))
+print("promotion_last_5years:")
+print(table(HR_Dataset$promotion_last_5years))
+print("Departments:")
+print(table(HR_Dataset$Departments))
+print("salary:")
+print(table(HR_Dataset$salary))
+
+# Visualize converted categorical variables
+par(mfrow=c(2, 3), mar=c(5, 5, 4, 2))  # Set up a 2x3 grid for plots and adjust margins
+
+# Plot for Work_accident
+barplot(table(HR_Dataset$Work_accident), main = "Work Accident", col = "skyblue")
+
+# Plot for left
+barplot(table(HR_Dataset$left), main = "Left", col = "skyblue")
+
+# Plot for promotion_last_5years
+barplot(table(HR_Dataset$promotion_last_5years), main = "Promotion Last 5 Years", col = "skyblue")
+
+# Plot for Departments
+barplot(table(HR_Dataset$Departments), main = "Departments", col = "skyblue", las = 2, cex.names = 0.8)  # Rotate labels vertically and reduce font size
+
+# Plot for salary
+barplot(table(HR_Dataset$salary), main = "Salary", col = "skyblue")
+
+# Reset par to default
+par(mfrow=c(1, 1))  # Reset to a single plot
+
+
+
+
+
+
+
+# Split data into training and testing sets (80:20 split)
+set.seed(123) # for reproducibility
+index <- createDataPartition(HR_Dataset$left, p = 0.8, list = FALSE)
+train_data <- HR_Dataset[index, ]
+test_data <- HR_Dataset[-index, ]
+
+# Train logistic regression model
+model <- glm(left ~ satisfaction_level + last_evaluation + number_project + average_montly_hours + 
+               time_spend_company + Work_accident + promotion_last_5years + Departments + salary, 
+             data = train_data, family = binomial)
+
+# Make predictions on test data
+predictions <- predict(model, newdata = test_data, type = "response")
+
+length(predictions)
+length(residuals)
+
+# Convert actual_values to numeric
+actual_values <- as.numeric(as.character(test_data$left))
+
+# Calculate residuals manually
+residuals <- actual_values - predictions
+
+# Filter out missing values
+valid_indices <- complete.cases(predictions, residuals)
+predictions <- predictions[valid_indices]
+residuals <- residuals[valid_indices]
+
+# Plot residuals against predicted probabilities
+plot(predictions, residuals, main = "Residuals vs Predicted Probabilities (Logistic Regression)",
+     xlab = "Predicted Probabilities", ylab = "Residuals")
+
+
+# Convert probabilities to binary predictions
+binary_predictions <- ifelse(predictions > 0.5, 1, 0)
+
+# Evaluate model performance
+conf_matrix <- confusionMatrix(factor(binary_predictions), test_data$left)
+
+# Extract evaluation metrics
+accuracy <- conf_matrix$overall['Accuracy']
+precision <- conf_matrix$byClass['Precision']
+recall <- conf_matrix$byClass['Recall']
+f1_score <- 2 * (precision * recall) / (precision + recall)
+
+# Print evaluation metrics
+print(paste("Accuracy:", accuracy))
+print(paste("Precision:", precision))
+print(paste("Recall:", recall))
+print(paste("F1 Score:", f1_score))
+
+
+
+
+# Plot Feature Importance (Coefficients)
+coef <- coef(model)
+names(coef)[1] <- "Intercept"  # Rename intercept
+# Plot coefficients
+barplot(coef, main = "Feature Importance: Coefficients", 
+        ylab = "Coefficient Value", col = "skyblue")
+
+# Plot coefficients vertically
+barplot(coef, main = "Feature Importance: Coefficients", 
+        ylab = "Coefficient Value", col = "skyblue", las = 2)
+
+
+
+
+# Plot Feature Importance (Coefficients) main
+coef <- coef(model)
+names(coef)[1] <- "Intercept"  # Rename intercept
+
+# Set up plot margins to allow space for variable names
+par(mar = c(10, 4, 4, 2) + 0.1)  # Increase bottom margin
+
+# Plot coefficients with adjusted bar width
+barplot(coef, main = "Feature Importance: Coefficients", 
+        ylab = "Coefficient Value", col = "skyblue", las = 2, cex.names = 0.7)
+
+# Reset margins to default
+par(mar = c(5, 4, 4, 2) + 0.1)
+
+
+
+# Print the coefficients and their corresponding variable names
+coef_values <- coef(model)
+
+# Create a data frame for better formatting
+coef_df <- data.frame(Variable = names(coef_values), Coefficient = coef_values)
+
+# Print the data frame
+print(coef_df)
+
+
+
+
+# Variable Distributions
+numeric_columns <- sapply(train_data, is.numeric)  # Identify numeric columns
+numeric_data <- train_data[, numeric_columns]  # Subset numeric columns
+par(mfrow = c(3, 3))  # Set up 3x3 grid for plots
+for (i in 1:ncol(numeric_data)) {
+  hist(numeric_data[, i], main = names(numeric_data)[i], col = "lightblue")
+}
+
+
+
+library(dplyr)
+# Identify numeric columns
+numeric_columns <- sapply(train_data, is.numeric)
+
+# Subset numeric columns
+numeric_data <- train_data[, numeric_columns]
+
+# Function to calculate summary statistics
+calculate_summary_statistics <- function(data) {
+  summary_stats <- data %>%
+    summarise_all(funs(
+      Mean = mean(.),
+      Median = median(.),
+      SD = sd(.),
+      Min = min(.),
+      Q1 = quantile(., 0.25),
+      Q3 = quantile(., 0.75),
+      Max = max(.),
+      NA_Count = sum(is.na(.))
+    ))
+  return(summary_stats)
+}
+
+# Calculate summary statistics for numeric data
+numeric_summary_stats <- calculate_summary_statistics(numeric_data)
+
+# Print summary statistics
+print(numeric_summary_stats)
+
+
+
+
+
+
+# Correlation Matrix
+numeric_columns <- sapply(train_data, is.numeric)  # Identify numeric columns
+numeric_data <- train_data[, numeric_columns]  # Subset numeric columns
+cor_matrix <- cor(numeric_data)
+corrplot::corrplot(cor_matrix, method = "color")
+
+
+
+
+
+# Load necessary library
+library(corrplot)
+
+# Compute the correlation matrix
+numeric_columns <- sapply(train_data, is.numeric)  # Identify numeric columns
+numeric_data <- train_data[, numeric_columns]  # Subset numeric columns
+cor_matrix <- cor(numeric_data)
+
+# Plot the correlation matrix without the variable distribution
+par(mfrow = c(1, 1))  # Reset plot layout to single plot
+corrplot(cor_matrix, 
+         method = "color", 
+         type = "upper", 
+         tl.col = "black", 
+         tl.cex = 0.8, 
+         number.cex = 0.7, 
+         addCoef.col = "black", 
+         col = colorRampPalette(c("red", "white", "blue"))(200))
+
+# Reset the graphics device to default parameters
+par(mfrow = c(1, 1))
+
+
+
+
+
+# Compute the correlation matrix
+numeric_columns <- sapply(train_data, is.numeric)  # Identify numeric columns
+numeric_data <- train_data[, numeric_columns]  # Subset numeric columns
+cor_matrix <- cor(numeric_data)
+
+# Print the correlation matrix with rounded values
+print(round(cor_matrix, 2))
+
+
+
+
+
+
+# ROC Curve
+ROCR_pred <- prediction(predictions, test_data$left)
+ROCR_perf <- performance(ROCR_pred, "tpr", "fpr")
+plot(ROCR_perf, main = "ROC Curve", colorize = TRUE)
+abline(a = 0, b = 1, lty = 2, col = "gray")  # Diagonal line
+
+# Precision-Recall Curve
+precision_recall <- performance(ROCR_pred, "prec", "rec")
+plot(precision_recall, main = "Precision-Recall Curve", colorize = TRUE)
+
+
+library(xgboost)
+
+# My dataset loading
+HR_Dataset <- read.csv("C:/Users/OEM/Desktop/Nonye/HR_Dataset.csv")
+
+# Convert categorical variables to dummy variables
+train_data_dummies <- model.matrix(~.-1, data = train_data[, -which(names(train_data) == "left")])
+test_data_dummies <- model.matrix(~.-1, data = test_data[, -which(names(test_data) == "left")])
+
+# Ensure labels are binary (0 and 1)
+train_data$left <- as.integer(train_data$left) - 1  # Convert labels to 0 and 1
+test_data$left <- as.integer(test_data$left) - 1  # Convert labels to 0 and 1
+
+# Train XGBoost model
+xgb_model <- xgboost(data = as.matrix(train_data_dummies), 
+                     label = train_data$left, 
+                     nrounds = 100,  # You can adjust the number of boosting rounds as needed
+                     objective = "binary:logistic")
+
+# Make predictions on test data
+xgb_predictions <- predict(xgb_model, as.matrix(test_data_dummies))
+
+# Compute residuals
+residuals <- xgb_predictions - test_data$left
+
+# Plot residuals
+plot(test_data$left, residuals, main = "Residuals vs Fitted (XGBoost)",
+     xlab = "Fitted values", ylab = "Residuals")
+
+
+# Plot Feature Importance (using XGBoost)
+xgb.importance(model = xgb_model)
+
+library(data.table)
+
+# Extract feature importance matrix
+importance_matrix <- xgb.importance(model = xgb_model)
+
+# Plot Feature Importance
+importance_values <- importance_matrix$Feature
+importance_scores <- importance_matrix$Gain
+barplot(importance_scores, names.arg = importance_values, las = 2, main = "Feature Importance (XGBoost)")
+
+
+
+# Extract feature importance matrix
+importance_matrix <- xgb.importance(model = xgb_model)
+
+# Plot Feature Importance
+importance_values <- importance_matrix$Feature
+importance_scores <- importance_matrix$Gain
+
+# Adjust margins to provide more space for the variable names
+par(mar = c(10, 5, 4, 2) + 0.1)  # Increase bottom margin
+
+# Create the barplot with adjusted margins
+barplot(importance_scores, names.arg = importance_values, las = 2, main = "Feature Importance (XGBoost)", cex.names = 0.7)
+
+# Reset margins to default
+par(mar = c(5, 4, 4, 2) + 0.1)
+
+
+
+
+# Variable Distributions (for continuous variables)
+continuous_vars <- c("satisfaction_level", "last_evaluation", "number_project", "average_montly_hours", "time_spend_company")
+par(mfrow = c(3, 2))  # Set up 3x2 grid for plots
+for (var in continuous_vars) {
+  hist(train_data[, var], main = var, col = "lightblue")
+}
+
+
+
+# Variable Distributions (for continuous variables)
+continuous_vars <- c("satisfaction_level", "last_evaluation", "number_project", "average_montly_hours", "time_spend_company")
+
+# Print summary statistics for each continuous variable
+for (var in continuous_vars) {
+  cat("Summary statistics for", var, ":\n")
+  print(summary(train_data[, var]))
+  cat("\n")
+}
+
+
+
+# Correlation Matrix (for continuous variables)
+cor_matrix <- cor(train_data[, continuous_vars])
+corrplot(cor_matrix, method = "color")
+
+# Print correlation matrix
+print(cor_matrix)
+
+
+
+# ROC Curve
+library(pROC)  # Load the pROC package
+
+# ROC Curve
+xgb_predictions <- predict(xgb_model, as.matrix(test_data_dummies), type="response")
+roc_obj <- roc(test_data$left, xgb_predictions)
+plot(roc_obj, main = "ROC Curve (XGBoost)", col = "blue", lwd = 2)
+legend("bottomright", legend = paste("AUC =", round(auc(roc_obj), 2)), col = "blue", lty = 1, cex = 0.8)
+
+
+
+# Generate predictions using the XGBoost model
+xgb_predictions <- predict(xgb_model, as.matrix(test_data_dummies), type = "response")
+
+# Ensure actual values are numeric and aligned
+actual_values <- as.numeric(as.character(test_data$left))
+
+# Print a summary of the predictions and actual values
+cat("Summary of XGBoost predictions:\n")
+print(summary(xgb_predictions))
+cat("\nSummary of actual values:\n")
+print(summary(actual_values))
+
+# Print a few predictions and actual values for inspection
+cat("\nFirst few XGBoost predictions:\n")
+print(head(xgb_predictions))
+cat("\nFirst few actual values:\n")
+print(head(actual_values))
+
+# Check if predictions are within the range [0, 1]
+if (any(xgb_predictions < 0 | xgb_predictions > 1)) {
+  stop("Predictions are out of range [0, 1].")
+}
+
+# Check if actual values are binary (0 or 1)
+if (any(actual_values != 0 & actual_values != 1)) {
+  stop("Actual values are not binary (0 or 1).")
+}
+
+# Generate the ROC object
+roc_obj <- pROC::roc(actual_values, xgb_predictions)
+
+# Print the structure of the recreated ROC object
+cat("\nStructure of ROC object:\n")
+str(roc_obj)
+
+# Check for any issues in the ROC object
+if (any(is.na(roc_obj$sensitivities)) || any(is.na(roc_obj$specificities))) {
+  stop("ROC object contains NA values.")
+}
+
+# Plot the ROC curve using plot.roc function
+plot.roc(roc_obj, main = "ROC Curve (XGBoost)", col = "blue", lwd = 2)
+
+
+
+
+
+# Compute precision and recall manually
+precision <- pr.curve(scores.class0 = xgb_predictions, weights.class0 = test_data$left)$precision
+recall <- pr.curve(scores.class0 = xgb_predictions, weights.class0 = test_data$left)$recall
+
+# Plot Precision-Recall Curve
+if (!is.null(precision) && !is.null(recall) && !any(is.na(precision)) && !any(is.na(recall))) {
+  plot(recall, precision, type = "l", col = "blue", lwd = 2,
+       main = "Precision-Recall Curve (XGBoost)", xlab = "Recall", ylab = "Precision")
+} else {
+  cat("Precision or recall values could not be computed.")
+}
+
+# Check binary predictions and actual labels
+print(summary(xgb_predictions))
+print(summary(test_data$left))
+
+
+# Adjust predicted probabilities
+xgb_predictions_adj <- ifelse(xgb_predictions < 1e-6, 0, ifelse(xgb_predictions > 1 - 1e-6, 1, xgb_predictions))
+
+# Compute confusion matrix
+conf_matrix <- table(test_data$left, ifelse(xgb_predictions_adj > 0.5, 1, 0))
+
+# Compute precision and recall
+precision <- conf_matrix[2, 2] / sum(conf_matrix[, 2])
+recall <- conf_matrix[2, 2] / sum(conf_matrix[2, ])
+
+# Print precision and recall
+cat("Precision:", precision, "\n")
+cat("Recall:", recall, "\n")
+
+
+# Create data frame for precision and recall values
+pr_data <- data.frame(Recall = recall, Precision = precision)
+
+
+# Print precision and recall values
+print(precision)
+print(recall)
+
+# Check the range of precision and recall values
+print(range(precision))
+print(range(recall))
+
+
+# Check Prediction Thresholds
+hist(predictions, main = "Distribution of Predicted Probabilities", xlab = "Predicted Probabilities", col = "skyblue")
+abline(v = 0.5, col = "red", lwd = 2, lty = 2)  # Add threshold line
+
+
+# Calculate accuracy
+accuracy <- sum(binary_predictions == test_data$left) / length(test_data$left)
+print(paste("Accuracy:", accuracy))
+
+# Plot Precision-Recall Curve
+plot(recall, precision, type = "l", col = "blue", lwd = 2,
+     main = "Precision-Recall Curve (XGBoost)", xlab = "Recall", ylab = "Precision")
+
+library(PRROC)
+
+
+# Compute precision and recall
+pr_curve_data <- pr.curve(scores.class0 = predictions, weights.class0 = test_data$left)
+
+
+# Compute precision and recall
+pr_curve_data <- pr.curve(scores.class0 = xgb_predictions, weights.class0 = test_data$left, curve = TRUE)
+
+# Check if the Precision-Recall curve object is NULL
+if (is.null(pr_curve_data)) {
+  cat("Precision-Recall curve object is NULL. Check input data and parameters.\n")
+} else {
+  # Plot Precision-Recall Curve
+  plot(pr_curve_data, main = "Precision-Recall Curve (XGBoost)")
+}
+
+
+
+
+
+
+# SVM Model
+
+# Load required libraries
+library(e1071)
+library(caret)
+
+# Ensure both train_data$left and test_data$left are factors
+train_data$left <- as.factor(train_data$left)
+test_data$left <- as.factor(test_data$left)
+
+# Train SVM model for binary classification
+svm_model <- svm(left ~ ., data = train_data, kernel = "linear", type = "C-classification")
+
+# Make predictions on test data
+svm_predictions <- predict(svm_model, newdata = test_data)
+
+# Plot predicted vs. actual with distinct colors
+plot(test_data$left, svm_predictions, main = "Predicted vs. Actual (SVM)",
+     xlab = "Actual", ylab = "Predicted", col = ifelse(svm_predictions == test_data$left, "blue", "red"), pch = 16)
+
+# Add diagonal line representing perfect predictions
+abline(0, 1, col = "green", lty = 2)
+
+# Add legend
+legend("topright", legend = c("Actual", "Perfect Predictions"), col = c("blue", "green"), lty = c(NA, 2), pch = c(16, NA))
+
+# Check length of predictions and actual labels
+length_predictions <- length(svm_predictions)
+length_actual <- length(test_data$left)
+print(paste("Length of Predictions:", length_predictions))
+print(paste("Length of Actual Labels:", length_actual))
+
+# Plot predicted vs. actual
+plot(test_data$left, svm_predictions, main = "Predicted vs. Actual (SVM)",
+     xlab = "Actual", ylab = "Predicted")
+
+# Compute residuals
+residuals <- as.numeric(svm_predictions) - as.numeric(test_data$left)
+
+# Plot residuals
+plot(test_data$left, residuals, main = "Residuals vs Fitted (SVM)",
+     xlab = "Fitted values", ylab = "Residuals")
+
+# Ensure both svm_predictions and test_data$left are factors
+svm_predictions <- as.factor(svm_predictions)
+test_data$left <- as.factor(test_data$left)
+
+# Now evaluate model performance
+conf_matrix_svm <- confusionMatrix(svm_predictions, test_data$left)
+
+# Extract evaluation metrics
+accuracy_svm <- conf_matrix_svm$overall['Accuracy']
+precision_svm <- conf_matrix_svm$byClass['Precision']
+recall_svm <- conf_matrix_svm$byClass['Recall']
+f1_score_svm <- conf_matrix_svm$byClass['F1']
+
+# Print evaluation metrics
+print(paste("SVM Accuracy:", accuracy_svm))
+print(paste("SVM Precision:", precision_svm))
+print(paste("SVM Recall:", recall_svm))
+print(paste("SVM F1 Score:", f1_score_svm))
+
+# Create a model matrix to get the correct variable names
+model_matrix <- model.matrix(left ~ ., data = train_data)
+
+# Print model matrix column names for inspection
+cat("Variable names in model matrix:\n")
+print(colnames(model_matrix))
+
+# Get the coefficients from the SVM model
+svm_coef <- coef(svm_model)
+
+# Print coefficients for inspection
+cat("Coefficients from SVM model:\n")
+print(svm_coef)
+
+# Remove the intercept if it's present
+svm_var_names <- colnames(model_matrix)
+if("(Intercept)" %in% svm_var_names) {
+  svm_var_names <- svm_var_names[svm_var_names != "(Intercept)"]
+}
+
+# Exclude the intercept coefficient if present
+svm_coef <- svm_coef[-1]  # Assuming the intercept is the first element
+
+# Print the final variable names and coefficients for verification
+cat("Final variable names after removing intercept:\n")
+print(svm_var_names)
+cat("Final coefficients after removing intercept:\n")
+print(svm_coef)
+
+# Remove the extra coefficient if there is a mismatch
+if(length(svm_coef) > length(svm_var_names)) {
+  # Identify and remove the extra coefficient
+  extra_coefficient <- svm_coef[length(svm_coef)]
+  svm_coef <- svm_coef[-length(svm_coef)]
+  cat("Removed extra coefficient:", extra_coefficient, "\n")
+}
+
+# Create a data frame with variable names and coefficients
+if(length(svm_coef) == length(svm_var_names)) {
+  svm_coef_df <- data.frame(Feature = svm_var_names, Coefficient = svm_coef)
+  print(svm_coef_df)
+} else {
+  # Output detailed information to diagnose the mismatch
+  cat("Mismatch between the number of coefficients and the number of variable names.\n")
+  cat("Number of coefficients: ", length(svm_coef), "\n")
+  cat("Number of variable names: ", length(svm_var_names), "\n")
+}
+
+
+
+
+
+
+# Create a data frame with variable names and coefficients
+svm_coef_df <- data.frame(Feature = svm_var_names, Coefficient = svm_coef)
+
+# Sort the coefficients by absolute value to visualize feature importance
+svm_coef_df <- svm_coef_df[order(abs(svm_coef_df$Coefficient), decreasing = TRUE), ]
+
+# Plot feature importance using a bar plot
+ggplot(svm_coef_df, aes(x = reorder(Feature, Coefficient), y = Coefficient)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  coord_flip() +
+  labs(title = "Feature Importance: SVM Coefficients",
+       x = "Variables",
+       y = "Coefficient Value") +
+  theme_minimal()
+
+
+
+# Load required libraries
+library(ggplot2)
+library(pROC)
+
+# Check variable distributions for continuous variables
+continuous_vars <- c("satisfaction_level", "last_evaluation", "number_project", 
+                     "average_montly_hours", "time_spend_company")
+continuous_data <- train_data[, continuous_vars]
+
+# Plot histograms for continuous variables
+histograms <- lapply(continuous_data, function(var) {
+  ggplot(train_data, aes(x = var)) +
+    geom_histogram(fill = "skyblue", color = "black") +
+    labs(title = paste("Distribution of", var),
+         x = var,
+         y = "Frequency") +
+    theme_minimal()
+})
+
+# Print summary statistics for continuous variables
+summary_stats <- lapply(continuous_data, summary)
+print(summary_stats)
+
+# Plot histograms
+print(histograms)
+
+# Compute correlation matrix
+correlation_matrix <- cor(continuous_data)
+
+# Print correlation matrix
+print("Correlation Matrix:")
+print(correlation_matrix)
+
+# Plot correlation matrix
+corrplot::corrplot(correlation_matrix, method = "color")
+
+# Compute ROC curve
+roc_curve <- roc(test_data$left, as.numeric(as.character(svm_predictions)))
+
+# Plot ROC curve
+plot(roc_curve, main = "ROC Curve", col = "blue", lwd = 2)
+
+# Compute precision-recall curve
+pr_curve <- pr.curve(scores.class0 = as.numeric(as.character(svm_predictions)),
+                     weights.class0 = ifelse(test_data$left == "0", 1, 0),
+                     curve = TRUE)
+
+# Plot precision-recall curve
+plot(pr_curve, main = "Precision-Recall Curve", col = "blue", lwd = 2)
+
+
+
+
+#Cross Validation
+
+# Load necessary libraries
+library(caret)
+library(pROC)
+
+# Define cross-validation control
+ctrl <- trainControl(method = "cv", number = 5)  # 5-fold cross-validation
+
+# Perform cross-validation for logistic regression
+set.seed(123)  # For reproducibility
+cv_logistic <- train(left ~ ., data = train_data, method = "glm", family = binomial, trControl = ctrl)
+
+# Perform cross-validation for XGBoost
+set.seed(123)  # For reproducibility
+cv_xgb <- train(left ~ ., data = train_data, method = "xgbTree", trControl = ctrl)
+
+# Perform cross-validation for SVM
+set.seed(123)  # For reproducibility
+cv_svm <- train(left ~ ., data = train_data, method = "svmRadial", trControl = ctrl)
+
+# Ensure test_data$left is numeric
+test_data$left <- as.numeric(as.character(test_data$left))
+
+# Ensure predictions for test data are numeric for precision and recall
+test_data$Work_accident <- as.factor(test_data$Work_accident)
+test_data$promotion_last_5years <- as.factor(test_data$promotion_last_5years)
+
+predictions_logistic_pr <- as.numeric(as.character(predict(cv_logistic, newdata = test_data, type = "raw")))
+predictions_xgb_pr <- as.numeric(as.character(predict(cv_xgb, newdata = test_data, type = "raw")))
+predictions_svm_pr <- as.numeric(as.character(predict(cv_svm, newdata = test_data, type = "raw")))
+
+# Ensure predictions for test data are numeric for ROC curve
+predictions_logistic_roc <- as.numeric(as.character(predict(cv_logistic, newdata = test_data)))
+predictions_xgb_roc <- as.numeric(as.character(predict(cv_xgb, newdata = test_data)))
+predictions_svm_roc <- as.numeric(as.character(predict(cv_svm, newdata = test_data)))
+
+# Calculate precision and recall for each model
+calculate_metrics <- function(predictions, true_labels) {
+  confusion <- confusionMatrix(as.factor(predictions), as.factor(true_labels))
+  precision <- confusion$byClass['Pos Pred Value']
+  recall <- confusion$byClass['Sensitivity']
+  return(c(precision, recall))
+}
+
+# Calculate precision and recall for logistic regression
+metrics_logistic_pr <- calculate_metrics(predictions_logistic_pr, test_data$left)
+precision_logistic_pr <- metrics_logistic_pr[1]
+recall_logistic_pr <- metrics_logistic_pr[2]
+
+# Calculate precision and recall for XGBoost
+metrics_xgb_pr <- calculate_metrics(predictions_xgb_pr, test_data$left)
+precision_xgb_pr <- metrics_xgb_pr[1]
+recall_xgb_pr <- metrics_xgb_pr[2]
+
+# Calculate precision and recall for SVM
+metrics_svm_pr <- calculate_metrics(predictions_svm_pr, test_data$left)
+precision_svm_pr <- metrics_svm_pr[1]
+recall_svm_pr <- metrics_svm_pr[2]
+
+# Bar plot for precision and recall across 3 models
+precision_recall <- c(
+  Precision_Logistic = precision_logistic_pr, Recall_Logistic = recall_logistic_pr,
+  Precision_XGBoost = precision_xgb_pr, Recall_XGBoost = recall_xgb_pr,
+  Precision_SVM = precision_svm_pr, Recall_SVM = recall_svm_pr
+)
+
+# Reshape the data for plotting
+precision_recall_matrix <- matrix(precision_recall, ncol = 2, byrow = TRUE)
+colnames(precision_recall_matrix) <- c("Precision", "Recall")
+rownames(precision_recall_matrix) <- c("Logistic", "XGBoost", "SVM")
+
+# Plotting the bar plot for precision and recall
+barplot(t(precision_recall_matrix), beside = TRUE, col = c("blue", "red"), 
+        legend.text = TRUE, args.legend = list(x = "topleft"), 
+        main = "Precision and Recall Across Models", 
+        xlab = "Model", ylab = "Value", names.arg = c("Logistic", "XGBoost", "SVM"))
+
+
+# Sensitivity and Specificity plot (ROC curve)
+roc_logistic <- roc(test_data$left, predictions_logistic_roc)
+roc_xgb <- roc(test_data$left, predictions_xgb_roc)
+roc_svm <- roc(test_data$left, predictions_svm_roc)
+
+# Plot ROC curves separately
+par(mfrow=c(1,3)) # Set up a grid of 1 row and 3 columns for plotting
+
+# Plot ROC curve for Logistic Regression
+plot(roc_logistic, col = "blue", main = "ROC Curve - Logistic Regression")
+legend("bottomright", legend = "Logistic", col = "blue", lty = 1)
+
+# Plot ROC curve for XGBoost
+plot(roc_xgb, col = "red", main = "ROC Curve - XGBoost")
+legend("bottomright", legend = "XGBoost", col = "red", lty = 1)
+
+# Plot ROC curve for SVM
+plot(roc_svm, col = "green", main = "ROC Curve - SVM")
+legend("bottomright", legend = "SVM", col = "green", lty = 1)
+
+# Reset plotting parameters
+par(mfrow=c(1,1))
+
+
+# Combine results for boxplot
+cv_results <- list(Logistic = cv_logistic$results$Accuracy,
+                   XGBoost = cv_xgb$results$Accuracy,
+                   SVM = cv_svm$results$Accuracy)
+
+# Create boxplot of cross-validation results
+boxplot(cv_results, main = "Cross-Validation Results",
+        xlab = "Model", ylab = "Accuracy", col = "skyblue")
+
+# Bar plot for mean accuracy of all models
+mean_accuracy <- sapply(cv_results, mean)
+barplot(mean_accuracy, main = "Mean Accuracy of Models",
+        xlab = "Model", ylab = "Mean Accuracy", col = "skyblue")
+
+# Line plot showing accuracy across folds for each model
+accuracy_across_folds <- list(
+  Logistic = cv_logistic$resample$Accuracy,
+  XGBoost = cv_xgb$resample$Accuracy,
+  SVM = cv_svm$resample$Accuracy
+)
+
+matplot(t(sapply(accuracy_across_folds, function(x) {
+  sapply(1:5, function(i) mean(x[c((1:5)[-i])]))
+})), type = "l", lty = 1, col = c("blue", "red", "green"), xlab = "Fold", ylab = "Accuracy", main = "Accuracy Across Folds")
+
+# Add legend to line plot
+legend("bottomright", legend = c("Logistic", "XGBoost", "SVM"), col = c("blue", "red", "green"), lty = 1)
+
+# Extract and print accuracy for each model
+accuracy_logistic <- max(cv_logistic$results$Accuracy)
+accuracy_xgb <- max(cv_xgb$results$Accuracy)
+accuracy_svm <- max(cv_svm$results$Accuracy)
+
+print(paste("Logistic Regression Accuracy:", accuracy_logistic))
+print(paste("XGBoost Accuracy:", accuracy_xgb))
+print(paste("SVM Accuracy:", accuracy_svm))
+
+# Line plot to visualize trends across different models
+plot(mean_accuracy, type = "b", col = c("blue", "red", "green"), ylim = c(0, 1), xlab = "Model", ylab = "Mean Accuracy",
+     main = "Trends Across Different Models", names.arg = c("Logistic", "XGBoost", "SVM"))
+
+# Radar chart
+library(fmsb)
+
+# Create data frame for radar chart
+radar_data <- data.frame(
+  Model = c("Logistic", "XGBoost", "SVM"),
+  Accuracy = c(accuracy_logistic, accuracy_xgb, accuracy_svm)
+)
+
+# Compute maximum accuracy to set the radar chart axes
+max_accuracy <- max(radar_data$Accuracy)
+
+# Create radar chart
+radar_values <- as.matrix(radar_data[, -1])
+radar_legend <- radar_data[, 1]
+radar_colors <- rainbow(nrow(radar_data))
+radarchart(radar_values, axistype = 1, pcol = radar_colors, plwd = 2, plty = 1, 
+           cglty = 1, cglwd = 0.5, caxislabels = seq(0, max_accuracy, by = 0.2),
+           vlcex = 0.8, vlabels = radar_legend, title = "Radar Chart")
+
+# Ensure predictions for test data are numeric
+test_data$Work_accident <- as.factor(test_data$Work_accident)
+test_data$promotion_last_5years <- as.factor(test_data$promotion_last_5years)
+
+predictions_logistic <- as.numeric(as.character(predict(cv_logistic, newdata = test_data, type = "raw")))
+predictions_xgb <- as.numeric(as.character(predict(cv_xgb, newdata = test_data, type = "raw")))
+predictions_svm <- as.numeric(as.character(predict(cv_svm, newdata = test_data, type = "raw")))
+
+# Dot plot to compare the metrics for each model
+dotplot(c(Logistic = accuracy_logistic, XGBoost = accuracy_xgb, SVM = accuracy_svm), col = "skyblue",
+        main = "Model Comparison", xlab = "Accuracy")
+
+# Bar plot illustrating True 0, True 1, Pred 0, Pred 1
+true_0 <- c(sum(test_data$left == 0), sum(test_data$left == 0), sum(test_data$left == 0))
+true_1 <- c(sum(test_data$left == 1), sum(test_data$left == 1), sum(test_data$left == 1))
+pred_0 <- c(sum(predictions_logistic == 0), sum(predictions_xgb == 0), sum(predictions_svm == 0))
+pred_1 <- c(sum(predictions_logistic == 1), sum(predictions_xgb == 1), sum(predictions_svm == 1))
+total_accuracy <- c(accuracy_logistic, accuracy_xgb, accuracy_svm)
+
+model_names <- c("Logistic", "XGBoost", "SVM")
+
+barplot(rbind(true_0, true_1, pred_0, pred_1), beside = TRUE, col = c("blue", "red", "green", "skyblue"), 
+        legend.text = c("True 0", "True 1", "Pred 0", "Pred 1"), 
+        args.legend = list(x = "topright"), 
+        main = "Comparison of True 0, True 1, Pred 0, Pred 1 Across Models", 
+        names.arg = model_names)
+
+
+# Calculate F1 score for each model
+calculate_f1_score <- function(precision, recall) {
+  f1_score <- 2 * (precision * recall) / (precision + recall)
+  return(f1_score)
+}
+
+# Calculate F1 score for logistic regression
+f1_score_logistic <- calculate_f1_score(precision_logistic_pr, recall_logistic_pr)
+
+# Calculate F1 score for XGBoost
+f1_score_xgb <- calculate_f1_score(precision_xgb_pr, recall_xgb_pr)
+
+# Calculate F1 score for SVM
+f1_score_svm <- calculate_f1_score(precision_svm_pr, recall_svm_pr)
+
+# Create a data frame for accuracy, precision, recall, and F1 score
+model_metrics <- data.frame(
+  Model = c("Logistic", "XGBoost", "SVM"),
+  Accuracy = c(accuracy_logistic, accuracy_xgb, accuracy_svm),
+  Precision = c(precision_logistic_pr, precision_xgb_pr, precision_svm_pr),
+  Recall = c(recall_logistic_pr, recall_xgb_pr, recall_svm_pr),
+  F1_Score = c(f1_score_logistic, f1_score_xgb, f1_score_svm)
+)
+
+# Reshape the data for plotting
+model_metrics_long <- reshape2::melt(model_metrics, id.vars = "Model")
+
+# Plotting the bar plot for accuracy, precision, recall, and F1 score
+ggplot(model_metrics_long, aes(x = Model, y = value, fill = variable)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Model Evaluation Metrics",
+       x = "Model",
+       y = "Value") +
+  scale_fill_manual(values = c("Accuracy" = "skyblue", 
+                               "Precision" = "orange", 
+                               "Recall" = "green", 
+                               "F1_Score" = "red")) +
+  theme_minimal()
+
+
+
+# Calculate confusion matrix for each model
+confusion_logistic <- confusionMatrix(as.factor(predictions_logistic), as.factor(test_data$left))
+confusion_xgb <- confusionMatrix(as.factor(predictions_xgb), as.factor(test_data$left))
+confusion_svm <- confusionMatrix(as.factor(predictions_svm), as.factor(test_data$left))
+
+# Print metrics for Logistic Regression
+print("Metrics for Logistic Regression:")
+print(paste("True Positive:", confusion_logistic$table[1, 1]))
+print(paste("False Positive:", confusion_logistic$table[1, 2]))
+print(paste("False Negative:", confusion_logistic$table[2, 1]))
+print(paste("True Negative:", confusion_logistic$table[2, 2]))
+print(paste("Accuracy:", confusion_logistic$overall["Accuracy"]))
+print(paste("No Information Rate:", confusion_logistic$byClass["No Information Rate"]))
+print(paste("Kappa:", confusion_logistic$overall["Kappa"]))
+print(paste("Sensitivity:", confusion_logistic$byClass["Sensitivity"]))
+print(paste("Specificity:", confusion_logistic$byClass["Specificity"]))
+print(paste("Positive Predictive Value:", confusion_logistic$byClass["Pos Pred Value"]))
+print(paste("Negative Predictive Value:", confusion_logistic$byClass["Neg Pred Value"]))
+print(paste("Prevalence:", confusion_logistic$byClass["Prevalence"]))
+print(paste("Detection Rate:", confusion_logistic$byClass["Detection Rate"]))
+print(paste("Detection Prevalence:", confusion_logistic$byClass["Detection Prevalence"]))
+print(paste("Balanced Accuracy:", confusion_logistic$byClass["Balanced Accuracy"]))
+print(paste("Precision:", confusion_logistic$byClass["Precision"]))
+print(paste("Recall:", confusion_logistic$byClass["Recall"]))
+print(paste("F1 Score:", confusion_logistic$byClass["F1"]))
+
+
+
+
+# Print metrics for XGBoost
+print("Metrics for XGBoost:")
+print(paste("True Positive:", confusion_xgb$table[1, 1]))
+print(paste("False Positive:", confusion_xgb$table[1, 2]))
+print(paste("False Negative:", confusion_xgb$table[2, 1]))
+print(paste("True Negative:", confusion_xgb$table[2, 2]))
+print(paste("Accuracy:", confusion_xgb$overall["Accuracy"]))
+print(paste("No Information Rate:", confusion_xgb$byClass["No Information Rate"]))
+print(paste("Kappa:", confusion_xgb$overall["Kappa"]))
+print(paste("Sensitivity:", confusion_xgb$byClass["Sensitivity"]))
+print(paste("Specificity:", confusion_xgb$byClass["Specificity"]))
+print(paste("Positive Predictive Value:", confusion_xgb$byClass["Pos Pred Value"]))
+print(paste("Negative Predictive Value:", confusion_xgb$byClass["Neg Pred Value"]))
+print(paste("Prevalence:", confusion_xgb$byClass["Prevalence"]))
+print(paste("Detection Rate:", confusion_xgb$byClass["Detection Rate"]))
+print(paste("Detection Prevalence:", confusion_xgb$byClass["Detection Prevalence"]))
+print(paste("Balanced Accuracy:", confusion_xgb$byClass["Balanced Accuracy"]))
+print(paste("Precision:", confusion_xgb$byClass["Precision"]))
+print(paste("Recall:", confusion_xgb$byClass["Recall"]))
+print(paste("F1 Score:", confusion_xgb$byClass["F1"]))
+
+
+# Print metrics for SVM
+print("Metrics for SVM:")
+print(paste("True Positive:", confusion_svm$table[1, 1]))
+print(paste("False Positive:", confusion_svm$table[1, 2]))
+print(paste("False Negative:", confusion_svm$table[2, 1]))
+print(paste("True Negative:", confusion_svm$table[2, 2]))
+print(paste("Accuracy:", confusion_svm$overall["Accuracy"]))
+print(paste("No Information Rate:", confusion_svm$byClass["No Information Rate"]))
+print(paste("Kappa:", confusion_svm$overall["Kappa"]))
+print(paste("Sensitivity:", confusion_svm$byClass["Sensitivity"]))
+print(paste("Specificity:", confusion_svm$byClass["Specificity"]))
+print(paste("Positive Predictive Value:", confusion_svm$byClass["Pos Pred Value"]))
+print(paste("Negative Predictive Value:", confusion_svm$byClass["Neg Pred Value"]))
+print(paste("Prevalence:", confusion_svm$byClass["Prevalence"]))
+print(paste("Detection Rate:", confusion_svm$byClass["Detection Rate"]))
+print(paste("Detection Prevalence:", confusion_svm$byClass["Detection Prevalence"]))
+print(paste("Balanced Accuracy:", confusion_svm$byClass["Balanced Accuracy"]))
+print(paste("Precision:", confusion_svm$byClass["Precision"]))
+print(paste("Recall:", confusion_svm$byClass["Recall"]))
+print(paste("F1 Score:", confusion_svm$byClass["F1"]))
